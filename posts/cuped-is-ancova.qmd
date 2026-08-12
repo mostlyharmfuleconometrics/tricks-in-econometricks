@@ -52,14 +52,16 @@ The two estimators are the same adjustment with two different slopes: CUPED uses
 
 ## Frisch–Waugh–Lovell
 
-FWL says the ANCOVA coefficient on $D$ equals $\widetilde D'\mathbf y/\widetilde D'\widetilde D$, where $\widetilde D$ is the residual from regressing $D$ on a constant and $X$. That leads to
+**Here's why the two estimators are asymptotically equal.** FWL says the ANCOVA coefficient on $D$ equals $\widetilde D'\widetilde{\mathbf y}/\widetilde D'\widetilde D$, where $\widetilde D$ and $\widetilde{\mathbf y}$ are the residuals from regressing $D$ and $\mathbf y$ on a constant and $X$. The CUPED estimator is $\dot D'\widetilde{\mathbf y}/\dot D'\dot D$, where $\dot D=D-\bar D$ is merely centered: we do the same thing except we never regress the treatment dummy against $X$. But random assignment makes $D$ independent of $X$, so asymptotically regressing against $X$ makes no difference and the two are equal.
+
+Let's inspect the finite-sample difference. Somewhat surprisingly, whether or not we partial out $\mathbf y$ makes no difference even in finite samples, so the ANCOVA coefficient also equals $\widetilde D'\mathbf y/\widetilde D'\widetilde D$. That leads to
 
 $$
 \widehat\tau_{\mathrm{ANCOVA}}
 =\frac{\widehat\tau_{\mathrm{CUPED}}}{1-\widehat r_{DX}^{\,2}}.
 $$
 
-(See the first derivation at the end of this post.) Here $\widehat r_{DX}$ is the sample correlation between treatment and the covariate. This is simply an algebraic identity requiring only $0<\bar D<1$, nonconstant $X$, and $\widehat r_{DX}^2\neq1$.
+(See the first derivation at the end of this post.) Here $\widehat r_{DX}$ is the sample correlation between treatment and the covariate (which we know goes to 0 asymptotically). This is simply an algebraic identity requiring only $0<\bar D<1$, nonconstant $X$, and $\widehat r_{DX}^2\neq1$.
 
 The factor has a reading in terms of the covariate. Because $D$ is binary, $\widehat r_{DX}^2$ is exactly the between-arm share of $X$'s sample variance, so $1-\widehat r_{DX}^2$ is the within-arm share and the two estimators are separated by its reciprocal.
 
@@ -207,6 +209,14 @@ ANCOVA is not unconditionally unbiased either. It carries its own $O(n^{-1})$ bi
 5. The gap between the two estimators is therefore immaterial at the sample sizes online experiments reach, and matters only when $n$ is small.
 
 ## Derivation of the CUPED–ANCOVA identity
+
+First, partialling the covariate out of $\mathbf y$ is optional. Let $P$ be the projection onto $\operatorname{span}(1,X)$ and split $\mathbf y=P\mathbf y+\widetilde{\mathbf y}$. Since $\widetilde D$ is by construction orthogonal to that span, $\widetilde D'P\mathbf y=0$ and
+
+$$
+\widetilde D'\mathbf y=\widetilde D'P\mathbf y+\widetilde D'\widetilde{\mathbf y}=\widetilde D'\widetilde{\mathbf y},
+$$
+
+so the two versions of the numerator agree exactly. Residualizing the regressor already annihilates whatever part of $\mathbf y$ the covariate explains. (This holds for the coefficient only: the two regressions leave different residuals, so their nominal standard errors differ.) The rest of the derivation therefore works with $\mathbf y$ directly.
 
 Write $\widehat C(a,b)=n^{-1}\sum_i(a_i-\bar a)(b_i-\bar b)$ and $\widehat V(a)=\widehat C(a,a)$. Regressing $D$ on a constant and $X$ fits $\bar D+c\,(X_i-\bar X)$ with $c=\widehat C(D,X)/\widehat V(X)$, so the residual is $\widetilde D_i=(D_i-\bar D)-c\,(X_i-\bar X)$. It has mean zero, so inner products with it are centered sums:
 
