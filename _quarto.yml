@@ -4,6 +4,7 @@ project:
 
 website:
   title: "Tricks in Econometricks"
+  draft-mode: gone
   site-url: https://mostlyharmfuleconometrics.github.io/tricks-in-econometricks/
   repo-url: https://github.com/mostlyharmfuleconometrics/tricks-in-econometricks
   repo-actions: [source, issue]
