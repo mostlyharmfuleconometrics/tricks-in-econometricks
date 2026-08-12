@@ -1,0 +1,190 @@
+---
+title: "Least Squares"
+subtitle: "Projection, sampling uncertainty, and a heteroskedastic simulation"
+jupyter: python3
+---
+
+Least squares is simultaneously an optimization problem, a geometric projection, and an estimator. Keeping those three interpretations separate makes it easier to see which conclusions are algebraic and which require probabilistic assumptions.
+
+## The population projection
+
+Let $Y$ be a scalar outcome and let $X$ be a $k \times 1$ vector of regressors that includes an intercept. The population linear projection coefficient is
+
+$$
+\beta^* = \arg\min_{b \in \mathbb{R}^k} \operatorname{E}\!\left[(Y-X'b)^2\right].
+$$
+
+Differentiating under the expectation gives
+
+$$
+-2\operatorname{E}[X(Y-X'b)] = 0.
+$$
+
+If $Q_{XX}=\operatorname{E}[XX']$ is nonsingular, then
+
+$$
+\beta^* = Q_{XX}^{-1}\operatorname{E}[XY].
+$$
+
+Define the projection error $U=Y-X'\beta^*$. The first-order condition is the orthogonality restriction
+
+$$
+\operatorname{E}[XU]=0.
+$$
+
+This restriction follows from the definition of a linear projection. It does **not** imply the stronger condition $\operatorname{E}[U\mid X]=0$. The stronger condition is useful when the linear specification is interpreted as a conditional-mean model or when a causal interpretation is desired.
+
+## The sample estimator
+
+For observations $i=1,\ldots,n$, stack the regressors into the $n\times k$ matrix $\mathbf X$ and outcomes into the $n\times1$ vector $\mathbf y$. Ordinary least squares solves
+
+$$
+\widehat\beta
+=\arg\min_b (\mathbf y-\mathbf Xb)'(\mathbf y-\mathbf Xb).
+$$
+
+The sample normal equations are
+
+$$
+\mathbf X'(\mathbf y-\mathbf X\widehat\beta)=0,
+$$
+
+so, when $\mathbf X'\mathbf X$ is invertible,
+
+$$
+\widehat\beta=(\mathbf X'\mathbf X)^{-1}\mathbf X'\mathbf y.
+$$
+
+Writing $\mathbf y=\mathbf X\beta+\mathbf u$ gives the exact decomposition
+
+$$
+\widehat\beta-\beta=(\mathbf X'\mathbf X)^{-1}\mathbf X'\mathbf u.
+$$
+
+Conditional mean independence, $\operatorname{E}[\mathbf u\mid\mathbf X]=0$, therefore implies $\operatorname{E}[\widehat\beta\mid\mathbf X]=\beta$. Under independent sampling and standard moment conditions,
+
+$$
+\sqrt n(\widehat\beta-\beta)
+\overset{d}{\longrightarrow}
+\mathcal N\!\left(0,Q_{XX}^{-1}\Omega Q_{XX}^{-1}\right),
+$$
+
+where
+
+$$
+Q_{XX}=\operatorname{E}[XX'],
+\qquad
+\Omega=\operatorname{E}[U^2XX'].
+$$
+
+If $\operatorname{Var}(U\mid X)=\sigma^2$, then $\Omega=\sigma^2Q_{XX}$ and the asymptotic variance simplifies to $\sigma^2Q_{XX}^{-1}$. Under heteroskedasticity it does not simplify, which is why the usual homoskedastic standard error can have the wrong coverage even when OLS itself remains unbiased and consistent.
+
+The Eicker--Huber--White sandwich estimator is
+
+$$
+\widehat{\operatorname{Var}}_{\mathrm{HC0}}(\widehat\beta)
+=(\mathbf X'\mathbf X)^{-1}
+\left(\sum_{i=1}^n \widehat u_i^2 X_iX_i'\right)
+(\mathbf X'\mathbf X)^{-1}.
+$$
+
+HC1 multiplies the middle matrix by $n/(n-k)$.
+
+## A simulation with heteroskedastic errors
+
+Consider the data-generating process
+
+$$
+X_i\sim\mathcal N(0,1),
+\qquad
+\varepsilon_i\sim\mathcal N(0,1),
+\qquad
+U_i=(0.35+0.80|X_i|)\varepsilon_i,
+$$
+
+$$
+Y_i=1+2X_i+U_i.
+$$
+
+Because $\operatorname{E}[U_i\mid X_i]=0$, the slope estimator targets $\beta_1=2$. But $\operatorname{Var}(U_i\mid X_i)=(0.35+0.80|X_i|)^2$, so homoskedastic standard errors are misspecified.
+
+The next cell runs 2,000 independent samples with $n=200$. It computes OLS directly from the normal equations and compares nominal 95% confidence intervals based on homoskedastic and HC1 standard errors.
+
+```{python}
+#| label: simulation
+#| fig-cap: "Sampling distribution of the OLS slope and confidence-interval coverage."
+#| fig-width: 10
+#| fig-height: 4.2
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+rng = np.random.default_rng(20260811)
+repetitions = 2_000
+n = 200
+k = 2
+beta = np.array([1.0, 2.0])
+
+slopes = np.empty(repetitions)
+se_homoskedastic = np.empty(repetitions)
+se_hc1 = np.empty(repetitions)
+
+for r in range(repetitions):
+    x = rng.normal(size=n)
+    X = np.column_stack((np.ones(n), x))
+    scale = 0.35 + 0.80 * np.abs(x)
+    u = scale * rng.normal(size=n)
+    y = X @ beta + u
+
+    bread = np.linalg.inv(X.T @ X)
+    beta_hat = bread @ X.T @ y
+    residual = y - X @ beta_hat
+
+    sigma2_hat = residual @ residual / (n - k)
+    vcov_homoskedastic = sigma2_hat * bread
+
+    meat_hc0 = X.T @ (X * residual[:, None] ** 2)
+    vcov_hc1 = (n / (n - k)) * bread @ meat_hc0 @ bread
+
+    slopes[r] = beta_hat[1]
+    se_homoskedastic[r] = np.sqrt(vcov_homoskedastic[1, 1])
+    se_hc1[r] = np.sqrt(vcov_hc1[1, 1])
+
+critical_value = 1.96
+coverage_homoskedastic = np.mean(
+    np.abs(slopes - beta[1]) <= critical_value * se_homoskedastic
+)
+coverage_hc1 = np.mean(np.abs(slopes - beta[1]) <= critical_value * se_hc1)
+
+print(f"Mean slope estimate:        {slopes.mean():.4f}")
+print(f"Monte Carlo bias:           {slopes.mean() - beta[1]:.4f}")
+print(f"Monte Carlo standard dev.:  {slopes.std(ddof=1):.4f}")
+print(f"Mean homoskedastic SE:      {se_homoskedastic.mean():.4f}")
+print(f"Mean HC1 SE:                {se_hc1.mean():.4f}")
+print(f"Homoskedastic 95% coverage: {coverage_homoskedastic:.3f}")
+print(f"HC1 95% coverage:           {coverage_hc1:.3f}")
+
+fig, axes = plt.subplots(1, 2, constrained_layout=True)
+
+axes[0].hist(slopes, bins=45, density=True, color="#4472C4", alpha=0.82)
+axes[0].axvline(beta[1], color="#A51C30", linewidth=2, label=r"True $\beta_1$")
+axes[0].set(xlabel=r"$\widehat\beta_1$", ylabel="Density", title="Sampling distribution")
+axes[0].legend(frameon=False)
+
+coverage = [coverage_homoskedastic, coverage_hc1]
+axes[1].bar(["Homoskedastic", "HC1"], coverage, color=["#D4A72C", "#4472C4"])
+axes[1].axhline(0.95, color="#A51C30", linestyle="--", linewidth=2, label="Nominal 95%")
+axes[1].set(ylim=(0.75, 1.0), ylabel="Coverage", title="95% confidence intervals")
+axes[1].legend(frameon=False)
+
+plt.show()
+```
+
+The slope estimates are centered near 2 because the conditional mean restriction is correct. The homoskedastic standard error is too small: observations with large $|X_i|$ are both more influential for the slope and noisier. HC1 estimates the sandwich variance and restores coverage close to its nominal level.
+
+## What this example establishes
+
+1. The normal equations and projection interpretation are algebraic.
+2. Unbiasedness and consistency require restrictions connecting $X$ and $U$.
+3. Correct point identification does not guarantee that a convenient standard-error formula is valid.
+4. A simulation can isolate these claims: the point estimator works, the homoskedastic uncertainty estimate fails, and the robust sandwich repairs inference.
