@@ -3,11 +3,11 @@ title: "CUPED and ANCOVA"
 subtitle: "Frisch–Waugh–Lovell, an exact finite-sample identity, and the cost of estimating the adjustment"
 description: "Relating CUPED to covariance adjustment through the Frisch–Waugh–Lovell theorem, with the exact factor separating the two estimators and the shrinkage it corrects."
 date: 2026-08-11
-categories: [regression, experiments, variance reduction, simulation]
+categories: [regression, experiments, finite-sample bias, simulation]
 jupyter: python3
 ---
 
-[CUPED](https://dl.acm.org/doi/abs/10.1145/2433396.2433413) — controlled experiments using pre-experiment data — is a variance-reduction technique offered by online experimentation platforms. Covariance adjustment, or ANCOVA, is the same idea in the language of experimental design: a pre-treatment covariate on the right-hand side of the regression. Deng et al. (2013, §3.2.1) note the connection in passing, but the relationship is tighter than a shared motivation. [Frisch–Waugh–Lovell](https://en.wikipedia.org/wiki/Frisch%E2%80%93Waugh%E2%80%93Lovell_theorem) makes the two estimators identical up to a factor that can be computed from the data.
+[CUPED](https://dl.acm.org/doi/abs/10.1145/2433396.2433413) — Controlled-experiment Using Pre-Experiment Data — is a variance-reduction technique offered by online experimentation platforms. Covariance adjustment, or ANCOVA, is the same idea in the language of experimental design: a pre-treatment covariate on the right-hand side of the regression. Deng et al. (2013) name ANCOVA in passing (§2.2) and observe that the optimal CUPED coefficient is an OLS slope (§3.2.1), but the relationship is tighter than either remark suggests. [Frisch–Waugh–Lovell](https://en.wikipedia.org/wiki/Frisch%E2%80%93Waugh%E2%80%93Lovell_theorem) makes the two estimators identical up to a factor that can be computed from the data.
 
 ## The experiment
 
@@ -21,7 +21,7 @@ Y_i = Y_i(0) + \tau D_i,
 D_i \perp (Y_i(0), X_i).
 $$
 
-Because assignment is random, the difference in means $\bar Y_t-\bar Y_c$ is already unbiased for $\tau$. The covariate is there to reduce variance, not to remove bias: the larger $\rho$ is, the more of the outcome's variation can be explained away before the arms are compared.
+Because assignment is random, the difference in means $\bar Y_t-\bar Y_c$ is already unbiased for $\tau$. The covariate is there to reduce variance, not to remove bias: the larger $|\rho|$ is, the more of the outcome's variation can be explained away before the arms are compared.
 
 ## Two estimators
 
@@ -34,11 +34,20 @@ $$
 
 and differ only in how $\theta$ is chosen. Randomization makes $\operatorname{E}[\bar X_t-\bar X_c]=0$, so $\widehat\tau(\theta)$ is unbiased for every **fixed** $\theta$. That qualifier turns out to matter.
 
-CUPED takes $\theta=\widehat\theta$, the pooled OLS slope of $Y$ on $X$. ANCOVA-1 — the covariate entered without a treatment interaction, as against the ANCOVA-2 specification that adds one — instead estimates $\tau$ as the coefficient on $D$ in
+CUPED takes $\theta=\widehat\theta$, the OLS slope from regressing $Y$ on $X$ alone, with $D$ omitted. ANCOVA-1 — the covariate entered without a treatment interaction — instead estimates $\tau$ as the coefficient on $D$ in
 
 $$
 Y_i = \alpha + \tau D_i + \gamma X_i + \varepsilon_i .
 $$
+
+ANCOVA belongs to the same family. Averaging the fitted equation within each arm, and using that the OLS residuals have mean zero in each arm because they are orthogonal to both the constant and $D$, gives $\bar Y_t-\bar Y_c=\widehat\tau+\widehat\gamma(\bar X_t-\bar X_c)$, so
+
+$$
+\widehat\tau_{\mathrm{ANCOVA}}
+=\left(\bar Y_t-\bar Y_c\right)-\widehat\gamma\left(\bar X_t-\bar X_c\right).
+$$
+
+The two estimators are the same adjustment with two different slopes: CUPED uses the slope that ignores arm membership, ANCOVA the common within-arm slope. Everything below is a consequence of that one difference.
 
 ## Frisch–Waugh–Lovell
 
@@ -57,20 +66,22 @@ $$
 =\widehat\tau_{\mathrm{CUPED}},
 $$
 
-the pooled slope $\widehat C(X,Y)/\widehat V(X)$ being CUPED's $\widehat\theta$. The denominator collapses to $1-\widehat r_{DX}^2$, the squared sample correlation between treatment and the covariate. Therefore
+the pooled slope $\widehat C(X,Y)/\widehat V(X)$ being CUPED's $\widehat\theta$. The denominator collapses to $1-\widehat r_{DX}^2$, with $\widehat r_{DX}$ the sample correlation between treatment and the covariate. Therefore
 
 $$
 \widehat\tau_{\mathrm{ANCOVA}}
 =\frac{\widehat\tau_{\mathrm{CUPED}}}{1-\widehat r_{DX}^{\,2}}.
 $$
 
-This is an identity, not an approximation. No expectations were taken and no limit was used, and nothing in the derivation used randomization, Gaussianity, a constant treatment effect, or any model for $Y$: it is algebra on $(D,X,\mathbf y)$ with $D$ binary, requiring only $0<\bar D<1$, $\widehat V(X)>0$, and $\widehat r_{DX}^2\neq1$. Randomization enters only to make $\widehat r_{DX}=O_p(n^{-1/2})$, so that the two estimators agree to $O_p(n^{-1})$.
+This is an identity, not an approximation. Nothing in the derivation used randomization, Gaussianity, a constant treatment effect, or any model for $Y$: it is algebra on $(D,X,\mathbf y)$ with $D$ binary, requiring only $0<\bar D<1$, $\widehat V(X)>0$, and $\widehat r_{DX}^2\neq1$. Randomization enters only to make $\widehat r_{DX}=O_p(n^{-1/2})$, so that the two estimators agree to $O_p(n^{-1})$.
 
-The derivation used the pooled $\widehat\theta$. Estimating $\theta$ on the control arm only, or on a separate pre-experiment panel, breaks the exact identity while leaving the asymptotics intact.
+The factor has a reading in terms of the covariate. Because $D$ is binary, $\widehat r_{DX}^2$ is exactly the between-arm share of $X$'s sample variance, so $1-\widehat r_{DX}^2$ is the within-arm share and the two estimators are separated by its reciprocal.
+
+The derivation used $\widehat\theta$ computed on the full sample. Estimating $\theta$ on the control arm only breaks the exact identity while leaving the asymptotics intact: such a $\theta$ differs from CUPED's by $O_p(n^{-1/2})$, and it multiplies $\bar X_t-\bar X_c$, itself $O_p(n^{-1/2})$, so the two choices differ below first order.
 
 ## Checking the identity
 
-The next cell draws 500 experiments at each of three sample sizes, computes both estimators, and reports the largest violation of the identity together with the median relative gap between them.
+The next cell draws 500 experiments at each of three sample sizes, computes both estimators, and reports the largest violation of the identity together with the median relative gap between them. The draws set $p=1/2$ and $\rho=0.7$. Neither result in this note depends on $\rho$ — the identity holds for any covariate, and the shrinkage derived below is the same for all of them — but a correlated covariate reduces the sampling variance of $\widehat\tau$, which sharpens the Monte Carlo precision.
 
 ```{python}
 #| label: identity
@@ -118,7 +129,7 @@ for n in (100, 1_000, 10_000):
     print(f"{n:7d}  {identity_error.max():18.2e}  {np.median(relative_gap):26.2e}")
 ```
 
-The middle column is floating-point error, so the identity holds exactly up to the arithmetic. The right column falls by roughly a factor of ten each time $n$ rises by a factor of ten, which is the $O_p(n^{-1})$ rate. At $n=100$ the two estimators disagree in the third significant figure, far below the sampling uncertainty in $\widehat\tau$ itself. The disagreement is small, but it is one-signed: since $\widehat r_{DX}^2\geq0$, ANCOVA is at least as far from zero as CUPED in every sample, not merely on average.
+The middle column is floating-point error, so the identity holds exactly up to the arithmetic. The right column falls by roughly a factor of ten each time $n$ rises by a factor of ten, which is the $O_p(n^{-1})$ rate. At $n=100$ the two estimators disagree in the third significant figure, far below the sampling uncertainty in $\widehat\tau$ itself. The disagreement is small, but it always runs in the same direction: since $\widehat r_{DX}^2\geq0$, ANCOVA is at least as far from zero as CUPED in every sample, not merely on average.
 
 ## The bias from estimating $\theta$
 
@@ -139,47 +150,89 @@ $$
 =\tau\left(1-\frac{1}{n-1}\right).
 $$
 
-The last step is exact rather than asymptotic, even though $D$ is binary and $1/(n-1)$ is usually quoted for bivariate normals. Conditional on the arm sizes, $D$ is a uniform random permutation of a fixed vector of ones and zeros, and the permutation expectation of a squared sample correlation is $1/(n-1)$ for any $X$ with $\widehat V(X)>0$. Exhaustive enumeration over all $\binom{n}{n_1}$ assignments confirms this to twelve decimals for arbitrary heavy-tailed $X$ and any split, and since the conditional expectation does not depend on $n_1$, the unconditional expectation is the same.
+The last step is exact rather than asymptotic, even though $D$ is binary and $1/(n-1)$ is usually quoted for bivariate normals. Conditional on the arm sizes, $D$ is a uniform random permutation of a fixed vector of ones and zeros, and the permutation expectation of a squared sample correlation is $1/(n-1)$ for any $X$ with $\widehat V(X)>0$. Since the conditional expectation does not depend on $n_1$, the unconditional expectation is the same.
 
-CUPED is therefore shrunk toward zero in expectation by a factor of exactly $1-1/(n-1)$, and dividing by $1-\widehat r_{DX}^2$ is what removes that term. Estimating $\theta$ is what breaks the unbiasedness that every fixed $\theta$ enjoyed: $\widehat\theta$ absorbs a piece of the treatment effect through the covariate's realized imbalance, then subtracts it back out of the estimate.
+CUPED is therefore shrunk toward zero in expectation by a factor of exactly $1-1/(n-1)$. Estimating $\theta$ is what breaks the unbiasedness that every fixed $\theta$ enjoyed: $\widehat\theta$ absorbs a piece of the treatment effect through the covariate's realized imbalance, then subtracts it back out of the estimate.
 
-The division does not make ANCOVA exactly unbiased in general, because $A$ and $\widehat r_{DX}^2$ are both functions of $D$ and $\operatorname{E}[A/(1-\widehat r_{DX}^2)]\neq0$. Under a balanced design it does: exhaustive enumeration over all assignments with a constant effect gives exactly zero bias at $n_1=n/2$, and the bias is antisymmetric in $n_1$, so the symmetric Bernoulli assignment used below averages it away. Off balance, the correction removes the leading term and leaves $O(n^{-3/2})$ (Lin 2013, §7.3).
+The division recovers $\tau$ identically: $\widehat\tau_{\mathrm{ANCOVA}}=\tau+A/(1-\widehat r_{DX}^2)$ in every sample. What it does not guarantee is that the remainder has mean zero, because $A$ and $\widehat r_{DX}^2$ are both functions of $D$, so $\operatorname{E}[A/(1-\widehat r_{DX}^2)]$ need not vanish even though $\operatorname{E}[A]=0$. Under a balanced design it does vanish: enumerating all assignments with a constant effect gives exactly zero bias at $n_1=n/2$, and the bias is antisymmetric in $n_1$, so the symmetric Bernoulli assignment used below averages it away. Off balance a remainder of order $n^{-3/2}$ or smaller survives (Lin 2013, §7.3).
 
-Under a constant effect this bias is proportional to $\tau$, so it vanishes under the sharp null and is a constant relative understatement of any nonzero effect. The next cell measures it as a fraction of $\tau$ over 40,000 samples at each of three sample sizes.
+Under a constant effect this bias is proportional to $\tau$, so it vanishes under the sharp null and is a constant relative understatement of any nonzero effect. The next cell measures it as a fraction of $\tau$ over 40,000 samples at each of five sample sizes.
 
 ```{python}
 #| label: shrinkage
+#| fig-cap: "Relative bias of the two estimators against sample size, with the predicted shrinkage. Error bars are two Monte Carlo standard errors."
+#| fig-width: 6.5
+#| fig-height: 4.0
+
+import matplotlib.pyplot as plt
 
 tau = 1.0
+reps = 40_000
+sizes = (25, 50, 100, 200, 400)
+
+bias_cuped = np.empty(len(sizes))
+bias_ancova = np.empty(len(sizes))
+se_cuped = np.empty(len(sizes))
+se_ancova = np.empty(len(sizes))
+
 print(f"{'n':>6}  {'predicted -1/(n-1)':>19}  {'CUPED':>10}  {'ANCOVA':>10}  {'(MC se)':>9}")
 
-for n in (50, 100, 200):
-    reps = 40_000
+for j, n in enumerate(sizes):
     biased = np.empty(reps)
     corrected = np.empty(reps)
     for r in range(reps):
         x, d, y = draw_experiment(n, rho=0.7, tau=tau)
         biased[r] = cuped(x, d, y)
         corrected[r] = ancova(x, d, y)
-    mc_se = biased.std(ddof=1) / np.sqrt(reps) / tau
+    bias_cuped[j] = biased.mean() / tau - 1
+    bias_ancova[j] = corrected.mean() / tau - 1
+    se_cuped[j] = biased.std(ddof=1) / np.sqrt(reps) / tau
+    se_ancova[j] = corrected.std(ddof=1) / np.sqrt(reps) / tau
     print(
-        f"{n:6d}  {-1 / (n - 1):19.5f}  {biased.mean() / tau - 1:10.5f}  "
-        f"{corrected.mean() / tau - 1:10.5f}  {mc_se:9.5f}"
+        f"{n:6d}  {-1 / (n - 1):19.5f}  {bias_cuped[j]:10.5f}  "
+        f"{bias_ancova[j]:10.5f}  {se_cuped[j]:9.5f}"
     )
+
+fine = np.linspace(sizes[0], sizes[-1], 200)
+fig, ax = plt.subplots(constrained_layout=True)
+
+ax.axhline(0.0, color="#999999", linewidth=1)
+ax.plot(fine, -1 / (fine - 1), color="#4472C4", linewidth=1.2, alpha=0.55)
+ax.errorbar(
+    sizes, bias_cuped, yerr=2 * se_cuped, fmt="o", color="#4472C4",
+    capsize=3, label=r"CUPED  $-1/(n-1)$",
+)
+ax.errorbar(
+    sizes, bias_ancova, yerr=2 * se_ancova, fmt="s", color="#A51C30",
+    capsize=3, label="ANCOVA",
+)
+ax.set(
+    xscale="log",
+    xlabel="Sample size $n$",
+    ylabel=r"Relative bias  $\operatorname{E}[\widehat\tau]/\tau-1$",
+    title="Shrinkage from estimating the adjustment",
+)
+ax.set_xticks(sizes)
+ax.set_xticklabels(sizes)
+ax.minorticks_off()
+ax.legend(frameon=False)
+
+plt.show()
 ```
 
-The CUPED column tracks $-1/(n-1)$ and sits many Monte Carlo standard errors below zero; the ANCOVA column is indistinguishable from zero. At $n=50$ the shrinkage is a 2% understatement of the treatment effect. Averaging experiments does not remove it: over $K$ experiments the relative bias stays at a weighted average of the $1/(n_k-1)$, however large $K$ becomes. What removes it is $n$. The bias is $O(n^{-1})$ while the standard error is $O(n^{-1/2})$, so at the sample sizes online experiments run, where $1/(n-1)$ is $10^{-5}$ or smaller, it is not measurable. This is a small-experiment concern.
+The CUPED column tracks $-1/(n-1)$ and sits many Monte Carlo standard errors below zero; the ANCOVA column is indistinguishable from zero. At $n=50$ the shrinkage is a 2% understatement of the treatment effect. Averaging experiments does not remove it: over $K$ experiments the relative bias stays at a weighted average of the $1/(n_k-1)$, however large $K$ becomes. What removes it is $n$. The bias is $O(n^{-1})$ while the standard error is $O(n^{-1/2})$, so at the sample sizes online experiments run, where $1/(n-1)$ is $10^{-5}$ or smaller, it is not measurable.
 
-The correction factor is not the only remedy. A $\theta$ estimated out of sample, on a separate pre-experiment panel, is fixed with respect to the randomization and therefore exactly unbiased; it forfeits nothing asymptotically and breaks only the identity with ANCOVA (Lin 2013, §6).
+The correction factor is not the only remedy. Estimating $\theta$ out of sample makes it fixed with respect to the randomization, and $\widehat\tau(\theta)$ is then exactly unbiased at no asymptotic cost (Lin 2013, §6).
 
-ANCOVA is not unconditionally unbiased either. It carries its own $O(n^{-1})$ bias whenever the individual treatment effect covaries with the squared centered covariate, with leading term $-n^{-1}\sigma_X^{-2}\operatorname{Cov}(\tau_i,(X_i-\bar X)^2)$ given in Lin (2013, §7.3), following Freedman. A constant effect eliminates it, as does a symmetric covariate with an effect linear in $X$; an effect quadratic in $X$ produces it even when $X$ is perfectly symmetric. Skewness is neither necessary nor sufficient. The claim ANCOVA supports is therefore narrow: it removes the specific shrinkage the identity's factor accounts for.
+ANCOVA is not unconditionally unbiased either. It carries its own $O(n^{-1})$ bias whenever the individual treatment effect $\tau_i$ covaries with the squared centered covariate, with leading term $-n^{-1}\operatorname{Cov}(\tau_i,(X_i-\bar X)^2)/\operatorname{Var}(X)$ given in Lin (2013, §7.3), following Freedman. A constant effect eliminates it, as does a symmetric covariate with an effect linear in $X$; an effect quadratic in $X$ produces it even when $X$ is perfectly symmetric. Skewness is neither necessary nor sufficient. The claim ANCOVA supports is therefore narrow: it removes the specific shrinkage the identity's factor accounts for.
 
 ## What this example establishes
 
 1. CUPED and ANCOVA-1 are the same estimator up to a computable factor, $\widehat\tau_{\mathrm{ANCOVA}}=\widehat\tau_{\mathrm{CUPED}}/(1-\widehat r_{DX}^2)$, exactly and in every finite sample, provided $\theta$ is estimated pooled.
 2. That derivation is algebraic: it assumes no model for $Y$, no randomization, and no constant treatment effect.
-3. Estimating $\theta$ in sample shrinks CUPED toward zero in expectation by exactly $1/(n-1)$ under a constant effect; the factor removes that term exactly under a balanced design and to $O(n^{-3/2})$ otherwise, and estimating $\theta$ out of sample avoids it entirely.
-4. The two estimators are therefore interchangeable for the point estimate at any sample size an online experiment is likely to reach, and distinguishable only when $n$ is small.
+3. Estimating $\theta$ in sample shrinks CUPED toward zero in expectation by exactly $1/(n-1)$ under a constant effect.
+4. The factor removes that shrinkage identically; the remainder has mean zero under a balanced design and is $O(n^{-3/2})$ otherwise. Estimating $\theta$ out of sample avoids the shrinkage instead.
+5. The gap between the two estimators is therefore immaterial at the sample sizes online experiments reach, and matters only when $n$ is small.
 
 ## References
 
