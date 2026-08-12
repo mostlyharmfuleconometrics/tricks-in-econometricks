@@ -7,7 +7,7 @@ categories: [regression, experiments, variance reduction, simulation]
 jupyter: python3
 ---
 
-[CUPED](https://dl.acm.org/doi/abs/10.1145/2433396.2433413) — controlled experiments using pre-experiment data — is a variance-reduction technique offered by online experimentation platforms. Covariance adjustment, or ANCOVA, is the same idea in econometric notation: a pre-treatment covariate on the right-hand side of the regression. Deng et al. (2013, §3.2.1) note the connection in passing, but the relationship is tighter than a shared motivation. Frisch–Waugh–Lovell makes the two estimators identical up to a factor that can be computed from the data.
+[CUPED](https://dl.acm.org/doi/abs/10.1145/2433396.2433413) — controlled experiments using pre-experiment data — is a variance-reduction technique offered by online experimentation platforms. Covariance adjustment, or ANCOVA, is the same idea in econometric notation: a pre-treatment covariate on the right-hand side of the regression. Deng et al. (2013, §3.2.1) note the connection in passing, but the relationship is tighter than a shared motivation. [Frisch–Waugh–Lovell](https://en.wikipedia.org/wiki/Frisch%E2%80%93Waugh%E2%80%93Lovell_theorem) makes the two estimators identical up to a factor that can be computed from the data.
 
 ## The experiment
 
