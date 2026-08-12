@@ -2,6 +2,7 @@
 title: "Partialling Out with Frisch-Waugh-Lovell"
 subtitle: "Recovering a regression coefficient with residuals in R"
 description: "An executable R example of the Frisch-Waugh-Lovell theorem and its use in applied regression work."
+author: "krusty the krabs"
 date: 2026-08-11
 categories: [least squares, regression, R]
 format: html
