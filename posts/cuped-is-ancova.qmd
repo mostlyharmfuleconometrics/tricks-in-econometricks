@@ -1,0 +1,335 @@
+---
+title: "CUPED Is ANCOVA"
+subtitle: "Frisch–Waugh–Lovell, variance reduction, and an exact finite-sample identity"
+description: "The variance-reduction technique used in online experimentation is a regression you already know, and the two estimators differ by an explicitly computable factor."
+date: 2026-08-11
+categories: [regression, experiments, variance reduction, simulation]
+jupyter: python3
+---
+
+Experimentation platforms advertise CUPED — *controlled experiments using pre-experiment data* — as a variance-reduction technique. Econometrics calls the same idea covariance adjustment, or ANCOVA: put a pre-treatment covariate on the right-hand side of the regression. The two literatures derive the estimator differently and rarely cite each other.
+
+The connection is not a secret — Deng et al. (2013, §3.2.1) note in passing that the optimal CUPED coefficient is the OLS slope. But the relationship is tighter than "same idea, different derivation." Frisch–Waugh–Lovell turns it into an algebraic identity that holds in every finite sample, with a correction factor you can compute from the data, and that factor turns out to do real work.
+
+## The experiment
+
+Unit $i$ is assigned $D_i\in\{0,1\}$ by randomization, independent of everything else, with $\operatorname{P}(D_i=1)=p$. Each unit carries a pre-experiment covariate $X_i$ — last week's value of the same metric, typically. Under a constant treatment effect $\tau$,
+
+$$
+Y_i = Y_i(0) + \tau D_i,
+\qquad
+\operatorname{corr}(Y_i(0), X_i)=\rho,
+\qquad
+D_i \perp (Y_i(0), X_i).
+$$
+
+Because assignment is random, the difference in means $\bar Y_t-\bar Y_c$ is already unbiased for $\tau$, and so is every fixed-coefficient adjustment of it. The question is therefore variance — with one exception, an $O(n^{-1})$ bias that appears the moment the adjustment coefficient is estimated, and that turns out to be exactly what distinguishes the two estimators in the title.
+
+## One family of estimators
+
+Every candidate here is a difference in means applied to a covariate-adjusted outcome $Y_i-\theta X_i$:
+
+$$
+\widehat\tau(\theta)
+= \left(\bar Y_t-\bar Y_c\right) - \theta\left(\bar X_t-\bar X_c\right).
+$$
+
+Randomization makes $\operatorname{E}[\bar X_t-\bar X_c]=0$, so $\widehat\tau(\theta)$ is unbiased for **every** fixed $\theta$. Three choices are in common use:
+
+- $\theta=0$: the raw difference in means.
+- $\theta=1$: the "just difference out the pre-period" estimator, $\;\overline{(Y-X)}_t-\overline{(Y-X)}_c$.
+- $\theta=\widehat\theta$: CUPED, with $\widehat\theta$ the pooled OLS slope of $Y$ on $X$.
+
+Writing $W_i=Y_i-\theta X_i$ and treating the arm sizes as fixed at $np$ and $n(1-p)$ — the simulations below assign by independent coin flip, but the arm-size factor is common to every estimator here and cancels from the ratios that follow —
+
+$$
+\operatorname{Var}\!\left(\widehat\tau(\theta)\right)
+=\frac{\operatorname{Var}(W)}{n\,p(1-p)},
+\qquad
+\operatorname{Var}(W)=\sigma_Y^2-2\theta\rho\sigma_Y\sigma_X+\theta^2\sigma_X^2,
+$$
+
+where $\sigma_Y^2=\operatorname{Var}(Y_i(0))$. Completing the square gives the whole story at once:
+
+$$
+\operatorname{Var}(W)
+=\underbrace{\sigma_Y^2\left(1-\rho^2\right)}_{\text{best attainable}}
++\underbrace{\left(\theta-\theta^*\right)^2\sigma_X^2}_{\text{penalty for the wrong }\theta},
+\qquad
+\theta^*=\rho\,\frac{\sigma_Y}{\sigma_X}.
+$$
+
+Two consequences worth stating separately. First, within this linear family the best any covariate can do is cut variance to the fraction $1-\rho^2$ of the unadjusted variance; a covariate's value here is entirely a question of its *linear* association with the outcome. (Nothing forces the adjustment to be linear. Adjusting on $g(X)$ lowers the best attainable ratio to $1-\operatorname{corr}(Y(0),\operatorname{E}[Y(0)\mid X])^2$, attained at $g=\operatorname{E}[Y(0)\mid X]$ — a point Deng et al. (2013, §3.2.1) already make. A covariate with $\rho=0$ can then still be worth a great deal: take $X\sim\mathcal N(0,1)$ and $Y(0)=(X^2-1)/\sqrt2$, where linear adjustment buys nothing and the conditional mean buys everything. Linear adjustment is optimal below only because the simulated DGP is jointly Gaussian.) Second, $\theta=1$ is optimal only in the knife-edge case $\rho\sigma_Y=\sigma_X$. Differencing out the pre-period is *worse than ignoring it* whenever
+
+$$
+\rho<\frac{\sigma_X}{2\sigma_Y},
+$$
+
+which for a metric whose variance is stable across periods means any $\rho$ below $1/2$. This is the common case for noisy engagement or revenue metrics, and it is the practical reason to estimate $\theta$ rather than assume it.
+
+## Frisch–Waugh–Lovell
+
+Now the regression. ANCOVA-1 — the single covariate entered without a treatment interaction, as against the ANCOVA-2 specification that adds one — estimates $\tau$ as the coefficient on $D$ in
+
+$$
+Y_i = \alpha + \tau D_i + \gamma X_i + \varepsilon_i .
+$$
+
+FWL says that coefficient equals $\widetilde D'\mathbf y/\widetilde D'\widetilde D$, where $\widetilde D$ is the residual from regressing $D$ on a constant and $X$. Write $\widehat C(a,b)=n^{-1}\sum_i(a_i-\bar a)(b_i-\bar b)$ and $\widehat V(a)=\widehat C(a,a)$, so that $\widetilde D_i=(D_i-\bar D)-c\,(X_i-\bar X)$ with $c=\widehat C(D,X)/\widehat V(X)$. Then
+
+$$
+\widetilde D'\mathbf y = n\left[\widehat C(D,Y)-c\,\widehat C(X,Y)\right],
+\qquad
+\widetilde D'\widetilde D = n\left[\widehat V(D)-c^2\widehat V(X)\right].
+$$
+
+Divide both by $n\widehat V(D)$. Because $D$ is binary, $\widehat C(D,Y)/\widehat V(D)=\bar Y_t-\bar Y_c$ and $\widehat C(D,X)/\widehat V(D)=\bar X_t-\bar X_c$ exactly, so the numerator collapses to
+
+$$
+\left(\bar Y_t-\bar Y_c\right)-\left(\bar X_t-\bar X_c\right)\frac{\widehat C(X,Y)}{\widehat V(X)}
+=\widehat\tau_{\mathrm{CUPED}},
+$$
+
+the pooled slope $\widehat C(X,Y)/\widehat V(X)$ being precisely CUPED's $\widehat\theta$. The denominator collapses to $1-\widehat r_{DX}^2$, the squared sample correlation between treatment and the covariate. Therefore
+
+$$
+\boxed{\;
+\widehat\tau_{\mathrm{ANCOVA}}
+=\frac{\widehat\tau_{\mathrm{CUPED}}}{1-\widehat r_{DX}^{\,2}}\;}
+$$
+
+This is an identity, not an approximation: no expectations were taken and no limit was used. In fact nothing in the derivation used randomization, Gaussianity, a constant treatment effect, or any model for $Y$ at all — it is algebra on $(D,X,\mathbf y)$ with $D$ binary, requiring only $0<\bar D<1$, $\widehat V(X)>0$, and $\widehat r_{DX}^2\neq1$. Randomization enters only to make $\widehat r_{DX}=O_p(n^{-1/2})$, so that the two estimators agree to $O_p(n^{-1})$.
+
+The derivation used the pooled $\widehat\theta$. Estimating $\theta$ on the control arm only, or on a separate pre-experiment panel, breaks the exact identity while leaving the asymptotics intact.
+
+## Checking the identity
+
+```{python}
+#| label: identity
+
+import numpy as np
+
+rng = np.random.default_rng(20260811)
+
+
+def draw_experiment(n, rho, tau=0.5, share=0.5):
+    x = rng.normal(size=n)
+    noise = rng.normal(size=n)
+    y0 = rho * x + np.sqrt(1.0 - rho**2) * noise
+    d = (rng.random(n) < share).astype(float)
+    return x, d, y0 + tau * d
+
+
+def difference_in_means(d, y):
+    return y[d == 1].mean() - y[d == 0].mean()
+
+
+def cuped(x, d, y):
+    x_centered = x - x.mean()
+    theta = (x_centered @ (y - y.mean())) / (x_centered @ x_centered)
+    return difference_in_means(d, y) - theta * difference_in_means(d, x)
+
+
+def ancova(x, d, y):
+    X = np.column_stack((np.ones(len(y)), d, x))
+    return np.linalg.lstsq(X, y, rcond=None)[0][1]
+
+
+print(f"{'n':>7}  {'max identity error':>18}  {'median |ANCOVA/CUPED - 1|':>26}")
+
+for n in (100, 1_000, 10_000):
+    identity_error = np.empty(500)
+    relative_gap = np.empty(500)
+    for r in range(500):
+        x, d, y = draw_experiment(n, rho=0.7)
+        tau_cuped = cuped(x, d, y)
+        tau_ancova = ancova(x, d, y)
+        r_dx = np.corrcoef(d, x)[0, 1]
+        identity_error[r] = abs(tau_ancova - tau_cuped / (1 - r_dx**2))
+        relative_gap[r] = abs(tau_ancova / tau_cuped - 1)
+    print(f"{n:7d}  {identity_error.max():18.2e}  {np.median(relative_gap):26.2e}")
+```
+
+The middle column is floating-point noise: the identity holds to machine precision at every sample size. The right column is the economically meaningful quantity, and it falls by roughly a factor of ten each time $n$ rises by a factor of ten — the $O_p(n^{-1})$ rate. At $n=100$ the two estimators disagree in the third significant figure, far below the sampling uncertainty in $\widehat\tau$ itself.
+
+That makes the discrepancy look like rounding. It is not, because it does not average out.
+
+## The factor is a bias correction
+
+Substitute $Y_i=Y_i(0)+\tau D_i$ into the pooled slope. Covariances are linear, so $\widehat\theta=\widehat\theta_0+\tau c$, where $\widehat\theta_0=\widehat C(X,Y(0))/\widehat V(X)$ uses only untreated potential outcomes and $c=\widehat C(D,X)/\widehat V(X)$ is the same coefficient that appeared in the FWL residualization. Since $c\,(\bar X_t-\bar X_c)=\widehat r_{DX}^2$,
+
+$$
+\widehat\tau_{\mathrm{CUPED}}
+=\tau\left(1-\widehat r_{DX}^{\,2}\right)+A,
+\qquad
+A=\left(\bar Y^0_t-\bar Y^0_c\right)-\widehat\theta_0\left(\bar X_t-\bar X_c\right).
+$$
+
+Conditional on $\{X_i,Y_i(0)\}_{i=1}^n$ and the arm sizes, $\widehat\theta_0$ is fixed and randomization gives $\operatorname{E}[\bar Y^0_t-\bar Y^0_c]=\operatorname{E}[\bar X_t-\bar X_c]=0$, so $\operatorname{E}[A]=0$ and
+
+$$
+\operatorname{E}\!\left[\widehat\tau_{\mathrm{CUPED}}\right]
+=\tau\left(1-\operatorname{E}\!\left[\widehat r_{DX}^{\,2}\right]\right)
+=\tau\left(1-\frac{1}{n-1}\right).
+$$
+
+The last step is exact rather than asymptotic, and it is worth pausing on because $D$ is binary and the familiar $1/(n-1)$ is usually quoted for bivariate normals. Conditional on the arm sizes, $D$ is a uniform random permutation of a fixed vector of ones and zeros, and the permutation expectation of a squared sample correlation is $1/(n-1)$ for *any* $X$ whatsoever. Exhaustive enumeration over all $\binom{n}{n_1}$ assignments confirms it to twelve decimals for arbitrary heavy-tailed $X$ and any split. Since the conditional expectation does not depend on $n_1$, the unconditional one is the same.
+
+So CUPED shrinks toward zero by a factor of exactly $1-1/(n-1)$, and dividing by $1-\widehat r_{DX}^2$ is precisely the correction that removes it. The estimated $\theta$ is what breaks the unbiasedness that every *fixed* $\theta$ enjoyed: $\widehat\theta$ absorbs a piece of the treatment effect through the covariate's realized imbalance, and then subtracts it back out of the estimate.
+
+Under a constant effect the bias is proportional to $\tau$, so it vanishes under the sharp null and is a constant *relative* understatement of any nonzero effect. The next cell measures it as a fraction of $\tau$, which is the scale-free version.
+
+```{python}
+#| label: shrinkage
+
+tau = 1.0
+print(f"{'n':>6}  {'predicted -1/(n-1)':>19}  {'CUPED':>10}  {'ANCOVA':>10}  {'(MC se)':>9}")
+
+for n in (50, 100, 200):
+    reps = 40_000
+    biased = np.empty(reps)
+    corrected = np.empty(reps)
+    for r in range(reps):
+        x, d, y = draw_experiment(n, rho=0.7, tau=tau)
+        biased[r] = cuped(x, d, y)
+        corrected[r] = ancova(x, d, y)
+    mc_se = biased.std(ddof=1) / np.sqrt(reps) / tau
+    print(
+        f"{n:6d}  {-1 / (n - 1):19.5f}  {biased.mean() / tau - 1:10.5f}  "
+        f"{corrected.mean() / tau - 1:10.5f}  {mc_se:9.5f}"
+    )
+```
+
+The CUPED column tracks $-1/(n-1)$ closely and sits many Monte Carlo standard errors below zero; the ANCOVA column is indistinguishable from zero. At $n=50$ that is a 2% understatement of the treatment effect. What shrinks it is $n$, not replication: average $K$ experiments and the relative bias stays at a weighted average of the $1/(n_k-1)$, however large $K$ gets.
+
+That said, $n$ shrinks it fast. The bias is $O(n^{-1})$ while the standard error is $O(n^{-1/2})$, so at the sample sizes online experiments actually run — where $1/(n-1)$ is $10^{-5}$ or smaller — nothing here is measurable. This matters for small experiments, not large ones.
+
+There is also a cure other than the correction factor, and the FWL section already named it without saying so: estimate $\theta$ out of sample, on a separate pre-experiment panel. An out-of-sample $\theta$ is a *fixed* $\theta$, so it is exactly unbiased. It breaks the identity with ANCOVA and forfeits nothing asymptotically.
+
+Finally, ANCOVA is not unconditionally unbiased either. It carries its own $O(n^{-1})$ bias whenever the individual treatment effect covaries with the *squared* centered covariate; Freedman (2008) isolates the leading term as $-n^{-1}\sigma_X^{-2}\operatorname{Cov}(\tau_i,(X_i-\bar X)^2)$, and Lin (2013, §7.3) restates it. Note what that condition is and is not. A constant effect kills it, and so does a symmetric covariate with an effect linear in $X$; but an effect *quadratic* in $X$ produces it even when $X$ is perfectly symmetric. Skewness is neither necessary nor sufficient. The defensible claim is therefore narrow: ANCOVA removes the specific shrinkage that the identity's factor accounts for.
+
+## What the covariate is worth
+
+The remaining question is the one that actually matters: how much variance does the adjustment buy, and how badly does the $\theta=1$ shortcut do? Set $\sigma_X=\sigma_Y=1$ so that $\theta^*=\rho$, and the theoretical variance ratios relative to the unadjusted estimator are $1-\rho^2$ for CUPED and $2(1-\rho)$ for the pre-period difference. Their gap is exactly $(1-\rho)^2$.
+
+```{python}
+#| label: variance
+#| fig-cap: "Left: variance relative to the unadjusted difference in means, against the outcome–covariate correlation. Right: variance as a function of the adjustment coefficient at ρ = 0.35."
+#| fig-width: 10
+#| fig-height: 4.2
+
+import matplotlib.pyplot as plt
+
+repetitions = 4_000
+n = 1_000
+
+rho_grid = np.linspace(0.0, 0.9, 10)
+ratio_cuped = np.empty(rho_grid.size)
+ratio_delta = np.empty(rho_grid.size)
+
+for j, rho in enumerate(rho_grid):
+    raw = np.empty(repetitions)
+    adjusted = np.empty(repetitions)
+    differenced = np.empty(repetitions)
+    for r in range(repetitions):
+        x, d, y = draw_experiment(n, rho)
+        raw[r] = difference_in_means(d, y)
+        adjusted[r] = cuped(x, d, y)
+        differenced[r] = difference_in_means(d, y - x)
+    baseline = raw.var(ddof=1)
+    ratio_cuped[j] = adjusted.var(ddof=1) / baseline
+    ratio_delta[j] = differenced.var(ddof=1) / baseline
+
+# Sweep the adjustment coefficient on one fixed set of draws (common random
+# numbers), so the curve is smooth in theta rather than jittering point to point.
+rho_fixed = 0.35
+sweep_repetitions = 20_000
+gap_y = np.empty(sweep_repetitions)
+gap_x = np.empty(sweep_repetitions)
+for r in range(sweep_repetitions):
+    x, d, y = draw_experiment(n, rho_fixed)
+    gap_y[r] = difference_in_means(d, y)
+    gap_x[r] = difference_in_means(d, x)
+
+theta_grid = np.linspace(-0.4, 1.4, 91)
+ratio_theta = np.array(
+    [(gap_y - t * gap_x).var(ddof=1) for t in theta_grid]
+) / gap_y.var(ddof=1)
+
+print(f"At rho = 0.7, CUPED variance ratio: {ratio_cuped[7]:.3f}")
+print(f"  equivalent to running the experiment on {ratio_cuped[7]:.0%} of the traffic")
+
+fine = np.linspace(0.0, 0.9, 200)
+fig, axes = plt.subplots(1, 2, constrained_layout=True)
+
+axes[0].axhline(1.0, color="#A51C30", linewidth=2, label="Unadjusted")
+axes[0].plot(fine, 1 - fine**2, color="#4472C4", linewidth=1.2, alpha=0.55)
+axes[0].plot(fine, 2 * (1 - fine), color="#D4A72C", linewidth=1.2, alpha=0.55)
+axes[0].plot(rho_grid, ratio_cuped, "o", color="#4472C4", label=r"CUPED  $1-\rho^2$")
+axes[0].plot(rho_grid, ratio_delta, "s", color="#D4A72C", label=r"$Y-X$  $2(1-\rho)$")
+axes[0].set(
+    xlabel=r"Outcome–covariate correlation $\rho$",
+    ylabel="Variance relative to unadjusted",
+    title="What the covariate buys",
+    ylim=(0.0, 2.1),
+)
+axes[0].legend(frameon=False, loc="upper right")
+
+axes[1].plot(theta_grid, ratio_theta, color="#4472C4", linewidth=2, label="Simulated")
+axes[1].plot(
+    theta_grid,
+    1 - 2 * rho_fixed * theta_grid + theta_grid**2,
+    color="#333333",
+    linestyle=":",
+    linewidth=1.5,
+    label=r"$1-2\rho\theta+\theta^2$",
+)
+axes[1].axhline(1.0, color="#A51C30", linewidth=1, linestyle="--")
+for value, name, color in (
+    (0.0, "unadjusted", "#A51C30"),
+    (rho_fixed, r"$\theta^*=\rho$", "#4472C4"),
+    (1.0, r"$Y-X$", "#D4A72C"),
+):
+    height = 1 - 2 * rho_fixed * value + value**2
+    axes[1].plot([value], [height], "o", color=color, markersize=9, zorder=3)
+    axes[1].annotate(
+        name, (value, height), textcoords="offset points", xytext=(6, 9), color=color
+    )
+axes[1].set(
+    xlabel=r"Adjustment coefficient $\theta$",
+    ylabel="Variance relative to unadjusted",
+    title=r"Choosing $\theta$ at $\rho=0.35$",
+)
+axes[1].legend(frameon=False, loc="upper center")
+
+plt.show()
+```
+
+The simulated points sit on the theoretical curves. At $\rho=0.7$ the adjustment removes about half the variance, which is the same precision from half the traffic — the reason experimentation platforms bother.
+
+The right panel is the part that gets skipped. The variance is a parabola in $\theta$, minimized at $\theta^*=\rho$, and the $\theta=1$ shortcut sits on the far side of it: at $\rho=0.35$, differencing out the pre-period *increases* variance by roughly 30% relative to doing nothing at all. The pre-period metric is genuinely informative here — the optimal adjustment still cuts variance by 12% — and the naive estimator converts that information into a loss. Nothing about the procedure warns you; the estimator remains unbiased, and the standard error simply gets larger.
+
+## Where this stops working
+
+The identity above is unconditional algebra, but the *efficiency* claims lean on the constant-effect, equal-share setup. Freedman (2008) showed that regression adjustment without interactions can be asymptotically *less* efficient than the unadjusted difference in means, and Lin (2013) showed the repair: interact the covariate with treatment, including $D\cdot(X-\bar X)$ alongside $X$, which is never asymptotically worse than not adjusting.
+
+It takes real work to trigger the problem, and it is worth being precise about how much, because the result is often quoted as though any regression adjustment were suspect. Freedman's own analysis shows that at $p=1/2$ adjustment either helps or is neutral, full stop. Away from balance, harm additionally requires that the *slope* of the outcome on $X$ differ across arms — a constant treatment effect forces those slopes to be equal, and then adjustment is safe at every $p$. Lin's Remark (v) sharpens what remains: harm requires either an assignment more lopsided than about 3:1, or a covariate that covaries more with the treatment effect than with the outcome level. Both of these are worth ruling out rather than assuming, but neither describes a typical balanced experiment. (The $p=1/2$ guarantee is specific to two arms; Lin notes it can fail with three or more treatment groups.)
+
+The other half of Freedman's critique is about standard errors rather than point estimates, and it is arguably the more practical hazard: when $p\neq1/2$, the conventional OLS standard error for ANCOVA-1 is inconsistent, and can err in either direction by a substantial factor. Lin shows the sandwich estimator repairs it — the same move that [the least-squares note](least-squares.qmd) makes for heteroskedasticity, with HC2 the usual recommendation here.
+
+This is the other place where the choice between CUPED and ANCOVA bites, and it cuts the opposite way from the bias. The point estimates coincide up to the factor derived above, but the *default* variance estimators do not, and here the CUPED default is the better one. CUPED implementations compute the standard error from the per-arm variances of the adjusted metric, treating $\widehat\theta$ as known. Treating it as known costs nothing — the post's own identity shows the correction is $O_p(n^{-1})$, hence below first order — and the per-arm form is asymptotically the Neyman variance, which is what HC2 delivers. An ANCOVA regression, left alone, reports the pooled homoskedastic OLS standard error instead. The fragile default belongs to the estimator with the better point estimate.
+
+## What this example establishes
+
+1. CUPED and ANCOVA-1 are the same estimator up to an explicitly computable factor: $\widehat\tau_{\mathrm{ANCOVA}}=\widehat\tau_{\mathrm{CUPED}}/(1-\widehat r_{DX}^2)$, exactly, in every finite sample, provided $\theta$ is estimated pooled. The derivation is algebra: it assumes no model, no randomization, and no constant effect.
+2. That factor is not cosmetic. Estimating $\theta$ in sample costs CUPED a shrinkage toward zero of exactly $1/(n-1)$ under a constant effect, and the factor removes it. Estimating $\theta$ out of sample avoids it instead. At the $n$ of a large online experiment none of this is measurable; at $n=50$ it is a 2% understatement.
+3. Within the linear family, a covariate cuts variance at best to the fraction $1-\rho^2$, attained only at $\theta^*=\rho\sigma_Y/\sigma_X$.
+4. Fixing $\theta=1$ — differencing out the pre-period — is optimal only by coincidence and actively harmful whenever $\rho<\sigma_X/2\sigma_Y$. The penalty is the unbiased estimator's quiet failure mode: correct on average, needlessly noisy.
+
+## References
+
+Deng, A., Xu, Y., Kohavi, R., and Walker, T. (2013). Improving the sensitivity of online controlled experiments by utilizing pre-experiment data. *WSDM*, 123–132.
+
+Freedman, D. A. (2008). On regression adjustments to experimental data. *Advances in Applied Mathematics*, 40(2), 180–193.
+
+Lin, W. (2013). Agnostic notes on regression adjustments to experimental data: Reexamining Freedman's critique. *Annals of Applied Statistics*, 7(1), 295–318.
