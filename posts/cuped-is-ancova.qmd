@@ -2,6 +2,7 @@
 title: "CUPED and ANCOVA"
 subtitle: "Frisch–Waugh–Lovell, an exact finite-sample identity, and the cost of estimating the adjustment"
 description: "Relating CUPED to covariance adjustment through the Frisch–Waugh–Lovell theorem, with the exact factor separating the two estimators and the shrinkage it corrects."
+author: "Greg Faletto"
 date: 2026-08-11
 categories: [regression, experiments, finite-sample bias, simulation]
 jupyter: python3
@@ -47,37 +48,22 @@ $$
 =\left(\bar Y_t-\bar Y_c\right)-\widehat\gamma\left(\bar X_t-\bar X_c\right).
 $$
 
-The two estimators are the same adjustment with two different slopes: CUPED uses the slope that ignores arm membership, ANCOVA the common within-arm slope. Everything below is a consequence of that one difference.
+The two estimators are the same adjustment with two different slopes: CUPED uses the slope that ignores arm membership, ANCOVA the common within-arm slope.
 
 ## Frisch–Waugh–Lovell
 
-FWL says the ANCOVA coefficient on $D$ equals $\widetilde D'\mathbf y/\widetilde D'\widetilde D$, where $\widetilde D$ is the residual from regressing $D$ on a constant and $X$. Write $\widehat C(a,b)=n^{-1}\sum_i(a_i-\bar a)(b_i-\bar b)$ and $\widehat V(a)=\widehat C(a,a)$, so that $\widetilde D_i=(D_i-\bar D)-c\,(X_i-\bar X)$ with $c=\widehat C(D,X)/\widehat V(X)$. Then
-
-$$
-\widetilde D'\mathbf y = n\left[\widehat C(D,Y)-c\,\widehat C(X,Y)\right],
-\qquad
-\widetilde D'\widetilde D = n\left[\widehat V(D)-c^2\widehat V(X)\right].
-$$
-
-Divide both by $n\widehat V(D)$. Because $D$ is binary, $\widehat C(D,Y)/\widehat V(D)=\bar Y_t-\bar Y_c$ and $\widehat C(D,X)/\widehat V(D)=\bar X_t-\bar X_c$ exactly, so the numerator collapses to
-
-$$
-\left(\bar Y_t-\bar Y_c\right)-\left(\bar X_t-\bar X_c\right)\frac{\widehat C(X,Y)}{\widehat V(X)}
-=\widehat\tau_{\mathrm{CUPED}},
-$$
-
-the pooled slope $\widehat C(X,Y)/\widehat V(X)$ being CUPED's $\widehat\theta$. The denominator collapses to $1-\widehat r_{DX}^2$, with $\widehat r_{DX}$ the sample correlation between treatment and the covariate. Therefore
+FWL says the ANCOVA coefficient on $D$ equals $\widetilde D'\mathbf y/\widetilde D'\widetilde D$, where $\widetilde D$ is the residual from regressing $D$ on a constant and $X$. That leads to
 
 $$
 \widehat\tau_{\mathrm{ANCOVA}}
 =\frac{\widehat\tau_{\mathrm{CUPED}}}{1-\widehat r_{DX}^{\,2}}.
 $$
 
-This is an identity, not an approximation. Nothing in the derivation used randomization, Gaussianity, a constant treatment effect, or any model for $Y$: it is algebra on $(D,X,\mathbf y)$ with $D$ binary, requiring only $0<\bar D<1$, $\widehat V(X)>0$, and $\widehat r_{DX}^2\neq1$. Randomization enters only to make $\widehat r_{DX}=O_p(n^{-1/2})$, so that the two estimators agree to $O_p(n^{-1})$.
+(See the first derivation at the end of this post.) Here $\widehat r_{DX}$ is the sample correlation between treatment and the covariate. This is simply an algebraic identity requiring only $0<\bar D<1$, nonconstant $X$, and $\widehat r_{DX}^2\neq1$.
 
 The factor has a reading in terms of the covariate. Because $D$ is binary, $\widehat r_{DX}^2$ is exactly the between-arm share of $X$'s sample variance, so $1-\widehat r_{DX}^2$ is the within-arm share and the two estimators are separated by its reciprocal.
 
-The derivation used $\widehat\theta$ computed on the full sample. Estimating $\theta$ on the control arm only breaks the exact identity while leaving the asymptotics intact: such a $\theta$ differs from CUPED's by $O_p(n^{-1/2})$, and it multiplies $\bar X_t-\bar X_c$, itself $O_p(n^{-1/2})$, so the two choices differ below first order.
+Randomization makes $\operatorname{E}[\widehat r_{DX}^2]=1/(n-1)$ exactly, for any nonconstant $X$ — shown below — so $\widehat r_{DX}=O_p(n^{-1/2})$ by Markov's inequality and the two estimators agree to $O_p(n^{-1})$.
 
 ## Checking the identity
 
@@ -129,32 +115,18 @@ for n in (100, 1_000, 10_000):
     print(f"{n:7d}  {identity_error.max():18.2e}  {np.median(relative_gap):26.2e}")
 ```
 
-The middle column is floating-point error, so the identity holds exactly up to the arithmetic. The right column falls by roughly a factor of ten each time $n$ rises by a factor of ten, which is the $O_p(n^{-1})$ rate. At $n=100$ the two estimators disagree in the third significant figure, far below the sampling uncertainty in $\widehat\tau$ itself. The disagreement is small, but it always runs in the same direction: since $\widehat r_{DX}^2\geq0$, ANCOVA is at least as far from zero as CUPED in every sample, not merely on average.
+The middle column is floating-point error, so the identity holds exactly up to the arithmetic. The right column falls by roughly a factor of ten each time $n$ rises by a factor of ten, which is the $O_p(n^{-1})$ rate. The disagreement is small, but it always runs in the same direction: since $\widehat r_{DX}^2\geq0$, ANCOVA is at least as far from zero as CUPED in every sample, not merely on average.
 
 ## The bias from estimating $\theta$
 
-Substitute $Y_i=Y_i(0)+\tau D_i$ into the pooled slope. Covariances are linear, so $\widehat\theta=\widehat\theta_0+\tau c$, where $\widehat\theta_0=\widehat C(X,Y(0))/\widehat V(X)$ uses only untreated potential outcomes and $c$ is the coefficient from the FWL residualization. Since $c\,(\bar X_t-\bar X_c)=\widehat r_{DX}^2$,
-
-$$
-\widehat\tau_{\mathrm{CUPED}}
-=\tau\left(1-\widehat r_{DX}^{\,2}\right)+A,
-\qquad
-A=\left(\bar Y^0_t-\bar Y^0_c\right)-\widehat\theta_0\left(\bar X_t-\bar X_c\right).
-$$
-
-Conditional on $\{X_i,Y_i(0)\}_{i=1}^n$ and the arm sizes, $\widehat\theta_0$ is fixed and randomization gives $\operatorname{E}[\bar Y^0_t-\bar Y^0_c]=\operatorname{E}[\bar X_t-\bar X_c]=0$, so $\operatorname{E}[A]=0$ and
+It turns out (see the second derivation at the end of this post) that
 
 $$
 \operatorname{E}\!\left[\widehat\tau_{\mathrm{CUPED}}\right]
-=\tau\left(1-\operatorname{E}\!\left[\widehat r_{DX}^{\,2}\right]\right)
 =\tau\left(1-\frac{1}{n-1}\right).
 $$
 
-The last step is exact rather than asymptotic, even though $D$ is binary and $1/(n-1)$ is usually quoted for bivariate normals. Conditional on the arm sizes, $D$ is a uniform random permutation of a fixed vector of ones and zeros, and the permutation expectation of a squared sample correlation is $1/(n-1)$ for any $X$ with $\widehat V(X)>0$. Since the conditional expectation does not depend on $n_1$, the unconditional expectation is the same.
-
 CUPED is therefore shrunk toward zero in expectation by a factor of exactly $1-1/(n-1)$. Estimating $\theta$ is what breaks the unbiasedness that every fixed $\theta$ enjoyed: $\widehat\theta$ absorbs a piece of the treatment effect through the covariate's realized imbalance, then subtracts it back out of the estimate.
-
-The division recovers $\tau$ identically: $\widehat\tau_{\mathrm{ANCOVA}}=\tau+A/(1-\widehat r_{DX}^2)$ in every sample. What it does not guarantee is that the remainder has mean zero, because $A$ and $\widehat r_{DX}^2$ are both functions of $D$, so $\operatorname{E}[A/(1-\widehat r_{DX}^2)]$ need not vanish even though $\operatorname{E}[A]=0$. Under a balanced design it does vanish: enumerating all assignments with a constant effect gives exactly zero bias at $n_1=n/2$, and the bias is antisymmetric in $n_1$, so the symmetric Bernoulli assignment used below averages it away. Off balance a remainder of order $n^{-3/2}$ or smaller survives (Lin 2013, §7.3).
 
 Under a constant effect this bias is proportional to $\tau$, so it vanishes under the sharp null and is a constant relative understatement of any nonzero effect. The next cell measures it as a fraction of $\tau$ over 40,000 samples at each of five sample sizes.
 
@@ -224,15 +196,100 @@ The CUPED column tracks $-1/(n-1)$ and sits many Monte Carlo standard errors bel
 
 The correction factor is not the only remedy. Estimating $\theta$ out of sample makes it fixed with respect to the randomization, and $\widehat\tau(\theta)$ is then exactly unbiased at no asymptotic cost (Lin 2013, §6).
 
-ANCOVA is not unconditionally unbiased either. It carries its own $O(n^{-1})$ bias whenever the individual treatment effect $\tau_i$ covaries with the squared centered covariate, with leading term $-n^{-1}\operatorname{Cov}(\tau_i,(X_i-\bar X)^2)/\operatorname{Var}(X)$ given in Lin (2013, §7.3), following Freedman. A constant effect eliminates it, as does a symmetric covariate with an effect linear in $X$; an effect quadratic in $X$ produces it even when $X$ is perfectly symmetric. Skewness is neither necessary nor sufficient. The claim ANCOVA supports is therefore narrow: it removes the specific shrinkage the identity's factor accounts for.
+ANCOVA is not unconditionally unbiased either. It carries its own $O(n^{-1})$ bias whenever the individual treatment effect $\tau_i$ covaries with the squared centered covariate, with leading term $-n^{-1}\operatorname{Cov}(\tau_i,(X_i-\bar X)^2)/\operatorname{Var}(X)$ given in Lin (2013, §7.3), following Freedman. A constant effect eliminates it, as does a symmetric covariate with an effect linear in $X$; an effect quadratic in $X$ produces it even when $X$ is perfectly symmetric.
 
 ## What this example establishes
 
-1. CUPED and ANCOVA-1 are the same estimator up to a computable factor, $\widehat\tau_{\mathrm{ANCOVA}}=\widehat\tau_{\mathrm{CUPED}}/(1-\widehat r_{DX}^2)$, exactly and in every finite sample, provided $\theta$ is estimated pooled.
+1. CUPED and ANCOVA-1 are the same estimator up to a computable factor, $\widehat\tau_{\mathrm{ANCOVA}}=\widehat\tau_{\mathrm{CUPED}}/(1-\widehat r_{DX}^2)$, exactly and in every finite sample, provided $\widehat\theta$ is computed on the full sample.
 2. That derivation is algebraic: it assumes no model for $Y$, no randomization, and no constant treatment effect.
 3. Estimating $\theta$ in sample shrinks CUPED toward zero in expectation by exactly $1/(n-1)$ under a constant effect.
 4. The factor removes that shrinkage identically; the remainder has mean zero under a balanced design and is $O(n^{-3/2})$ otherwise. Estimating $\theta$ out of sample avoids the shrinkage instead.
 5. The gap between the two estimators is therefore immaterial at the sample sizes online experiments reach, and matters only when $n$ is small.
+
+## Derivation of the CUPED–ANCOVA identity
+
+Write $\widehat C(a,b)=n^{-1}\sum_i(a_i-\bar a)(b_i-\bar b)$ and $\widehat V(a)=\widehat C(a,a)$. Regressing $D$ on a constant and $X$ fits $\bar D+c\,(X_i-\bar X)$ with $c=\widehat C(D,X)/\widehat V(X)$, so the residual is $\widetilde D_i=(D_i-\bar D)-c\,(X_i-\bar X)$. It has mean zero, so inner products with it are centered sums:
+
+$$
+\widetilde D'\mathbf y = n\left[\widehat C(D,Y)-c\,\widehat C(X,Y)\right],
+\qquad
+\widetilde D'\widetilde D = n\left[\widehat V(D)-c^2\widehat V(X)\right],
+$$
+
+the second after using $\widehat C(D,X)=c\,\widehat V(X)$ to combine the last two terms.
+
+Two facts about binary $D$ finish the argument. Write $\widehat p=\bar D$. Then $\widehat V(D)=\widehat p-\widehat p^{\,2}=\widehat p(1-\widehat p)$, and since $n^{-1}\sum_i D_iX_i=\widehat p\,\bar X_t$ and $\bar X=\widehat p\,\bar X_t+(1-\widehat p)\bar X_c$,
+
+$$
+\widehat C(D,X)=\widehat p\,\bar X_t-\widehat p\,\bar X=\widehat p(1-\widehat p)\left(\bar X_t-\bar X_c\right).
+$$
+
+So $\widehat C(D,X)/\widehat V(D)=\bar X_t-\bar X_c$ exactly, and the same computation with $Y$ in place of $X$ gives $\widehat C(D,Y)/\widehat V(D)=\bar Y_t-\bar Y_c$. Regressing on a binary regressor returns the difference in means.
+
+Now divide both displays by $n\widehat V(D)$. Moving one factor of $\widehat V(X)$ from the $c$ in the second term to the covariance beside it turns the numerator into
+
+$$
+\left(\bar Y_t-\bar Y_c\right)-\left(\bar X_t-\bar X_c\right)\frac{\widehat C(X,Y)}{\widehat V(X)}
+=\widehat\tau_{\mathrm{CUPED}},
+$$
+
+the pooled slope $\widehat C(X,Y)/\widehat V(X)$ being CUPED's $\widehat\theta$. The denominator becomes
+
+$$
+1-\frac{c^2\widehat V(X)}{\widehat V(D)}
+=1-\frac{\widehat C(D,X)^2}{\widehat V(X)\widehat V(D)}
+=1-\widehat r_{DX}^2 .
+$$
+
+Therefore
+
+$$
+\widehat\tau_{\mathrm{ANCOVA}}
+=\frac{\widehat\tau_{\mathrm{CUPED}}}{1-\widehat r_{DX}^{\,2}}.
+$$
+
+The derivation used $\widehat\theta$ computed on the full sample. Estimating $\theta$ on the control arm only breaks the exact identity while leaving the asymptotics intact: such a $\theta$ differs from CUPED's by $O_p(n^{-1/2})$, and it multiplies $\bar X_t-\bar X_c$, itself $O_p(n^{-1/2})$, so the two choices differ below first order.
+
+## Derivation of $\operatorname{E}[\widehat\tau_{\mathrm{CUPED}}]$
+
+Substitute $Y_i=Y_i(0)+\tau D_i$ into the pooled slope. Covariances are linear, so $\widehat C(X,Y)=\widehat C(X,Y(0))+\tau\widehat C(X,D)$, and dividing by $\widehat V(X)$ gives
+
+$$
+\widehat\theta=\widehat\theta_0+\tau c,
+\qquad
+\widehat\theta_0=\frac{\widehat C(X,Y(0))}{\widehat V(X)},
+$$
+
+where $\widehat\theta_0$ uses only untreated potential outcomes and $c$ is the same coefficient as in the residualization above, because it is the same ratio.
+
+That $c$ and the covariate imbalance are the two simple-regression slopes between $D$ and $X$: $c=\widehat C(D,X)/\widehat V(X)$ by definition, and $\bar X_t-\bar X_c=\widehat C(D,X)/\widehat V(D)$ by the binary-$D$ fact above. A squared correlation is the product of the two slopes, so
+
+$$
+c\,\left(\bar X_t-\bar X_c\right)
+=\frac{\widehat C(D,X)^2}{\widehat V(X)\widehat V(D)}
+=\widehat r_{DX}^2 .
+$$
+
+Then $\bar Y_t-\bar Y_c=\left(\bar Y^0_t-\bar Y^0_c\right)+\tau$ and $\widehat\theta\left(\bar X_t-\bar X_c\right)=\widehat\theta_0\left(\bar X_t-\bar X_c\right)+\tau\widehat r_{DX}^2$, so
+
+$$
+\widehat\tau_{\mathrm{CUPED}}
+=\tau\left(1-\widehat r_{DX}^{\,2}\right)+A,
+\qquad
+A=\left(\bar Y^0_t-\bar Y^0_c\right)-\widehat\theta_0\left(\bar X_t-\bar X_c\right).
+$$
+
+Conditional on $\{X_i,Y_i(0)\}_{i=1}^n$ and the treated-arm size $n_1$, $\widehat\theta_0$ is fixed and randomization gives $\operatorname{E}[\bar Y^0_t-\bar Y^0_c]=\operatorname{E}[\bar X_t-\bar X_c]=0$, so $\operatorname{E}[A]=0$ and
+
+$$
+\operatorname{E}\!\left[\widehat\tau_{\mathrm{CUPED}}\right]
+=\tau\left(1-\operatorname{E}\!\left[\widehat r_{DX}^{\,2}\right]\right)
+=\tau\left(1-\frac{1}{n-1}\right).
+$$
+
+The last step is exact rather than asymptotic, even though $D$ is binary and $1/(n-1)$ is usually quoted for bivariate normals. Conditional on the arm sizes, $D$ is a uniform random permutation of a fixed vector of ones and zeros, and the permutation expectation of a squared sample correlation is $1/(n-1)$ for any $X$ with $\widehat V(X)>0$. Since the conditional expectation does not depend on $n_1$, the unconditional expectation is the same.
+
+The division recovers $\tau$ identically: $\widehat\tau_{\mathrm{ANCOVA}}=\tau+A/(1-\widehat r_{DX}^2)$ in every sample. What it does not guarantee is that the remainder has mean zero, because $A$ and $\widehat r_{DX}^2$ are both functions of $D$, so $\operatorname{E}[A/(1-\widehat r_{DX}^2)]$ need not vanish even though $\operatorname{E}[A]=0$. Under a balanced design it does vanish: enumerating all assignments with a constant effect gives exactly zero bias at $n_1=n/2$, and the bias is antisymmetric in $n_1$, so the symmetric Bernoulli assignment used in the simulation averages it away. Off balance a remainder of order $n^{-3/2}$ or smaller survives (Lin 2013, §7.3).
 
 ## References
 
