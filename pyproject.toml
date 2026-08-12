@@ -1,7 +1,7 @@
 [project]
 name = "tricks-in-econometricks"
 version = "0.1.0"
-description = "Executable econometrics notes built with Quarto"
+description = "A shared Quarto blog for applied econometric methods"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

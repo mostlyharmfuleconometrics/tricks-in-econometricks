@@ -1,0 +1,80 @@
+---
+title: "Partialling Out with Frisch-Waugh-Lovell"
+subtitle: "Recovering a regression coefficient with residuals in R"
+description: "An executable R example of the Frisch-Waugh-Lovell theorem and its use in applied regression work."
+date: 2026-08-11
+categories: [least squares, regression, R]
+format: html
+---
+
+The Frisch-Waugh-Lovell theorem gives a useful way to interpret a coefficient
+in a multiple regression. It also provides a practical check on an estimation
+workflow.
+
+Suppose the regression is
+
+$$
+Y = \alpha + \beta D + X'\gamma + U,
+$$
+
+where $D$ is the regressor of interest and $X$ contains the controls. The
+coefficient $\widehat\beta$ is unchanged if we:
+
+1. regress $Y$ on $X$ and retain the residuals;
+2. regress $D$ on $X$ and retain the residuals; and
+3. regress the residualized outcome on the residualized regressor.
+
+The result follows because residualization projects both variables onto the
+space orthogonal to the controls. The final regression compares only the
+variation in $Y$ and $D$ that the controls do not explain.
+
+## Verify the result in R
+
+The example uses only base R. We generate an outcome in which treatment and a
+control are correlated, then compare the treatment coefficient from the full
+regression with the coefficient from the residual regression.
+
+```{r}
+#| label: fwl-simulation
+
+set.seed(20260811)
+n <- 1000
+
+x <- rnorm(n)
+d <- 0.8 * x + rnorm(n)
+y <- 1 + 2 * d - 0.5 * x + rnorm(n)
+
+full_model <- lm(y ~ d + x)
+y_residual <- resid(lm(y ~ x))
+d_residual <- resid(lm(d ~ x))
+partial_model <- lm(y_residual ~ d_residual)
+
+coefficients <- c(
+  full_regression = unname(coef(full_model)["d"]),
+  partial_regression = unname(coef(partial_model)["d_residual"])
+)
+
+print(round(coefficients, 10))
+stopifnot(isTRUE(all.equal(coefficients[[1]], coefficients[[2]])))
+```
+
+The two estimates are equal up to numerical precision. This identity is
+algebraic: it does not require the regression to have a causal interpretation.
+A causal interpretation of $\widehat\beta$ still requires assumptions that
+make the residual variation in $D$ conditionally exogenous.
+
+## When the theorem is useful
+
+Partialling out clarifies what a multiple-regression coefficient measures. It
+also helps with several applied tasks:
+
+- diagnosing which observations and sources of variation identify a
+  coefficient;
+- checking that two implementations use the same controls and sample; and
+- motivating flexible nuisance-function methods that residualize outcomes and
+  treatments before estimating a target effect.
+
+The theorem does not permit controls to be selected without regard to the
+research design. Bad controls, measurement error, and omitted confounders
+remain bad controls, measurement error, and omitted confounders after
+residualization.
