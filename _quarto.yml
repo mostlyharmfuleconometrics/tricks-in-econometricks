@@ -21,11 +21,12 @@ format:
       light: cosmo
       dark: darkly
     toc: true
-    code-fold: false
+    code-fold: true
     code-copy: true
     html-math-method: katex
 
 execute:
+  freeze: auto
   echo: true
   warning: false
   message: false

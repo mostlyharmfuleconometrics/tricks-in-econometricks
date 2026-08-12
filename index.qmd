@@ -1,6 +1,6 @@
 ---
 title: "Tricks in Econometricks"
-subtitle: "Executable notes on econometric methods"
+subtitle: "A shared blog for practical, applied econometric methods"
 listing:
   contents: posts
   type: default

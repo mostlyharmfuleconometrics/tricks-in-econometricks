@@ -2,6 +2,7 @@
 title: "Least Squares"
 subtitle: "Projection, sampling uncertainty, and a heteroskedastic simulation"
 description: "Deriving ordinary least squares and diagnosing conventional inference with a heteroskedastic Monte Carlo experiment."
+author: "krusty the krabs"
 date: 2026-08-11
 categories: [least squares, inference, simulation]
 jupyter: python3
