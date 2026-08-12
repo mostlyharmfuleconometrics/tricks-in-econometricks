@@ -25,6 +25,7 @@ format:
     html-math-method: katex
 
 execute:
+  freeze: auto
   echo: true
   warning: false
   message: false

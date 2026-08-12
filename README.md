@@ -70,8 +70,15 @@ QUARTO_PYTHON=.venv/bin/python quarto render
 Quarto uses the project Python environment for Python posts and the installed R
 environment for R posts. The rendered site is written to `_site/`.
 
+Project renders use Quarto's `freeze: auto` setting. Quarto re-executes a post
+when its source changes and saves the result under `_freeze/`. Commit the
+updated `_freeze/` files with the post so later renders can reuse the result.
+Render the individual post, for example `quarto render posts/example.qmd`, when
+an external input changes without a corresponding change to the post source.
+
 ## Contribute
 
 Open a pull request with one focused method or workflow. Before submission,
 render the full site and check that the post includes its code, output, and the
-information needed to reproduce the example.
+information needed to reproduce the example. Include the updated `_freeze/`
+files in the pull request.
