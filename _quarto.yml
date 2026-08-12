@@ -10,7 +10,7 @@ website:
   navbar:
     left:
       - href: index.qmd
-        text: Least squares
+        text: Entries
   page-footer:
     center: "Tricks in Econometricks"
 
